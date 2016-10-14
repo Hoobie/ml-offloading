@@ -1,7 +1,10 @@
 {
-  "compilerOptions": {
-    "sourceMap": true,
-    "target": "ES5",
-    "experimentalDecorators": true
-  }
+    "compilerOptions": {
+        "sourceMap": false,
+        "target": "ES5",
+        "experimentalDecorators": true
+    },
+    "include": [
+        "src/**/*"
+    ]
 }
