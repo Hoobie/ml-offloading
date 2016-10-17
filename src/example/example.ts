@@ -1,3 +1,5 @@
+import offloadable from '../decorators';
+
 class Example {
     @offloadable
     test(): string {
