@@ -45,4 +45,6 @@ crashlytics-build.properties
 fabric.properties
 
 # Custom
+node_modules/
 *.js
+*.d.ts

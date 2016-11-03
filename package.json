@@ -1,11 +1,17 @@
 {
-  "name": "ml-offloading",
-  "version": "0.1.0",
-  "description": "MCC offloading with Machine Learning",
-  "main": "src/decorators.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Hubert Słojewski",
-  "license": "ISC"
+    "name": "ml-offloading",
+    "version": "0.1.0",
+    "description": "MCC offloading with Machine Learning",
+    "main": "index.js",
+    "types": "index.d.ts",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "Hubert Słojewski",
+    "license": "ISC",
+    "dependencies": {
+        "browserify": "latest",
+        "@types/browserify": "latest",
+        "typescript": ">=2.x"
+    }
 }

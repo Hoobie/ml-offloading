@@ -1,10 +1,16 @@
 {
+    "compileOnSave": true,
     "compilerOptions": {
+        "declaration": true,
         "sourceMap": false,
         "target": "ES5",
-        "experimentalDecorators": true
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true
     },
     "include": [
-        "src/**/*"
+        "./**/*"
+    ],
+    "exclude": [
+        "node_modules"
     ]
 }
