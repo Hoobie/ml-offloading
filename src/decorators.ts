@@ -1,3 +1,8 @@
+const HEROKU_ENDPOINT = 'https://js-executor-service.herokuapp.com';
+const DIGITAL_OCEAN_ENDPOINT = 'http://139.59.141.80';
+const AMAZON_AWS_ENDPOINT = 'http://52.210.180.189';
+const DOCKER_MACHINE_ENDPOINT = 'http://192.168.99.100:12346';
+
 export default function offloadable(target: Object, propertyKey: string, descriptor: PropertyDescriptor) {
     let originalMethod = descriptor.value;
 
@@ -10,7 +15,11 @@ export default function offloadable(target: Object, propertyKey: string, descrip
 
         let start = performance.now();
 
-        let res = httpPost('http://localhost:8080', originalMethod.toString());
+        let body = {
+          code: originalMethod.toString(),
+          args: args
+        }
+        let res = httpPost(DOCKER_MACHINE_ENDPOINT, JSON.stringify(body));
 
         // let result = originalMethod.apply(this, args);
 
