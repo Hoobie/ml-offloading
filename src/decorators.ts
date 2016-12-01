@@ -11,22 +11,24 @@ export default function offloadable(target: Object, propertyKey: string, descrip
         console.log('propertyKey: ', propertyKey);
         console.log('descriptor: ', descriptor);
         console.log('code: ', originalMethod.toString());
-        console.log('args: ', JSON.stringify(args));
+        console.log('args: ', JSON.stringify(args).substring(0, 100));
 
         let start = performance.now();
 
         let body = {
           code: originalMethod.toString(),
           args: args
-        }
-        let res = httpPost(DOCKER_MACHINE_ENDPOINT, JSON.stringify(body));
+        };
+        let jsonRes = httpPost(DOCKER_MACHINE_ENDPOINT, JSON.stringify(body));
 
         // let result = originalMethod.apply(this, args);
 
         let end = performance.now();
         console.log('time [ms]: ', end - start);
 
-        console.log('result: ' + res);
+        console.log('result: ' + jsonRes);
+        let res = JSON.parse(jsonRes);
+
         return res;
     };
 
@@ -34,7 +36,7 @@ export default function offloadable(target: Object, propertyKey: string, descrip
 }
 
 function httpPost(url, content) {
-    var xhr = new XMLHttpRequest();
+    const xhr = new XMLHttpRequest();
     xhr.open('POST', url, false);
     xhr.send(content);
     return xhr.responseText;
