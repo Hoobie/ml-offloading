@@ -7,9 +7,6 @@ export default function offloadable(target: Object, propertyKey: string, descrip
     let originalMethod = descriptor.value;
 
     descriptor.value = function(...args: any[]) {
-        console.log('target: ', target);
-        console.log('propertyKey: ', propertyKey);
-        console.log('descriptor: ', descriptor);
         console.log('code: ', originalMethod.toString());
         console.log('args: ', JSON.stringify(args).substring(0, 100));
 
