@@ -5,34 +5,111 @@ import * as MlKnn from "ml-knn";
 
 const DOCKER_MACHINE_WEBDIS_ENDPOINT = "ws://192.168.99.100:7379/.json";
 
-const TRAINING_SET = {
+const TIME_TRAINING_SET = {
     data: [
-        [10, 1, 1],
-        [20, 2, 2],
-        [20, 3, 4],
-        [20, 1, 8],
-        [20, 2, 16],
-        [20, 3, 8],
-        [30, 1, 1],
-        [30, 2, 8],
-        [30, 3, 4],
-        [30, 4, 2],
-        [30, 5, 2048],
-        [30, 5, 1024],
-        [50, 6, 512],
-        [50, 6, 1024],
-        [50, 5, 4096],
-        [100, 5, 2048],
-        [100, 4, 512],
-        [120, 3, 1024],
-        [200, 3, 256],
-        [200, 2, 512]
+        [0, 10, 1, 1],
+        [0, 20, 2, 2],
+        [0, 20, 3, 4],
+        [0, 20, 1, 8],
+        [0, 20, 2, 16],
+        [0, 20, 3, 8],
+        [0, 30, 1, 1],
+        [0, 30, 2, 8],
+        [0, 30, 3, 1024],
+        [0, 30, 4, 512],
+        [0, 30, 5, 2048],
+        [0, 30, 5, 1024],
+        [0, 50, 6, 512],
+        [0, 50, 6, 1024],
+        [0, 50, 5, 4096],
+        [0, 100, 5, 2048],
+        [0, 100, 4, 512],
+        [0, 120, 3, 1024],
+        [0, 200, 3, 256],
+        [0, 200, 2, 512],
+        [1, 10, 1, 1],
+        [1, 20, 2, 2],
+        [1, 20, 3, 4],
+        [1, 20, 1, 8],
+        [1, 20, 2, 16],
+        [1, 20, 3, 8],
+        [1, 30, 1, 1],
+        [1, 30, 2, 8],
+        [1, 30, 3, 1024],
+        [1, 30, 4, 512],
+        [1, 30, 5, 2048],
+        [1, 30, 5, 1024],
+        [1, 50, 6, 512],
+        [1, 50, 6, 1024],
+        [1, 50, 5, 4096],
+        [1, 100, 5, 2048],
+        [1, 100, 4, 512],
+        [1, 120, 3, 1024],
+        [1, 200, 3, 256],
+        [1, 200, 2, 512]
     ],
-    predictions: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    predictions: [-2, -2, -2, -2, -1, -1, -1, -1, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
+        -2, -2, -2, -2, -2, -2, -2, -2, -1, -1, -1, -1, -1, -1, -1, -1]
 }
 
-const CLASSIFIER = new MlKnn();
-CLASSIFIER.train(TRAINING_SET.data, TRAINING_SET.predictions);
+const ENERGY_TRAINING_SET = {
+    data: [
+        [0, 10, 1, 1],
+        [0, 20, 2, 2],
+        [0, 20, 3, 4],
+        [0, 20, 1, 8],
+        [0, 20, 2, 16],
+        [0, 20, 3, 8],
+        [0, 30, 1, 1],
+        [0, 30, 2, 8],
+        [0, 30, 3, 1024],
+        [0, 30, 4, 512],
+        [0, 30, 5, 2048],
+        [0, 30, 5, 1024],
+        [0, 50, 6, 512],
+        [0, 50, 6, 1024],
+        [0, 50, 5, 4096],
+        [0, 100, 5, 2048],
+        [0, 100, 4, 512],
+        [0, 120, 3, 1024],
+        [0, 200, 3, 256],
+        [0, 200, 2, 512],
+        [1, 10, 1, 1],
+        [1, 20, 2, 2],
+        [1, 20, 3, 4],
+        [1, 20, 1, 8],
+        [1, 20, 2, 16],
+        [1, 20, 3, 8],
+        [1, 30, 1, 1],
+        [1, 30, 2, 8],
+        [1, 30, 3, 1024],
+        [1, 30, 4, 512],
+        [1, 30, 5, 2048],
+        [1, 30, 5, 1024],
+        [1, 50, 6, 512],
+        [1, 50, 6, 1024],
+        [1, 50, 5, 4096],
+        [1, 100, 5, 2048],
+        [1, 100, 4, 512],
+        [1, 120, 3, 1024],
+        [1, 200, 3, 256],
+        [1, 200, 2, 512]
+    ],
+    predictions: [-2, -2, -2, -2, -1, -1, -1, -1, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
+        -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0]
+}
+
+const TIME_CLASSIFIER = new MlKnn();
+TIME_CLASSIFIER.train(TIME_TRAINING_SET.data, TIME_TRAINING_SET.predictions);
+
+const ENERGY_CLASSIFIER = new MlKnn();
+ENERGY_CLASSIFIER.train(ENERGY_TRAINING_SET.data, ENERGY_TRAINING_SET.predictions);
+
+const W_T = 0.7;
+const W_E = 0.3;
+function cost(mT: number, mE: number): number {
+    return (W_T * mT) + (W_E * mE);
+}
 
 export default function offloadable(target: Object, propertyKey: string, descriptor: PropertyDescriptor) {
     let originalMethod = descriptor.value;
@@ -46,10 +123,17 @@ export default function offloadable(target: Object, propertyKey: string, descrip
 
         let start = performance.now();
 
-        let features = [strMethod.length, args.length, jsonArgs.length];
-        console.log("features: ", JSON.stringify(features));
+        let local_features = [0, strMethod.length, args.length, jsonArgs.length];
+        console.log("local features: ", JSON.stringify(local_features));
+        let offload_features = [1, strMethod.length, args.length, jsonArgs.length];
+        console.log("offload features: ", JSON.stringify(offload_features));
 
-        if (CLASSIFIER.predict([features])[0] === 1) {
+        let local_cost = cost(TIME_CLASSIFIER.predict([local_features])[0], ENERGY_CLASSIFIER.predict([local_features])[0]);
+        console.log("local cost: ", local_cost);
+        let offload_cost = cost(TIME_CLASSIFIER.predict([offload_features])[0], ENERGY_CLASSIFIER.predict([offload_features])[0]);
+        console.log("offload cost: ", offload_cost);
+
+        if (local_cost > offload_cost) {
             console.log("prediction: offload");
             const id = Date.now();
             let body = {
