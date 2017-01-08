@@ -5,6 +5,8 @@ import * as MlKnn from "ml-knn";
 
 const DOCKER_MACHINE_WEBDIS_ENDPOINT = "ws://192.168.99.100:7379/.json";
 
+// attributes: [local/offload, methodSize, argumentsCount, argumentsSize]
+// labels: -2 = very low, -1 = low, 0 = medium, 1 = high, 2 = very high
 const TIME_TRAINING_SET = {
     data: [
         [0, 10, 1, 1],
