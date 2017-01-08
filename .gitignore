@@ -48,3 +48,4 @@ fabric.properties
 node_modules/
 *.js
 *.d.ts
+npm-debug.log
