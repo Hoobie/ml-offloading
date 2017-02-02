@@ -47,5 +47,4 @@ fabric.properties
 # Custom
 node_modules/
 *.js
-*.d.ts
 npm-debug.log
