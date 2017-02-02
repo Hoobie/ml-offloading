@@ -52,7 +52,7 @@ const TIME_TRAINING_SET = {
     ],
     predictions: [-2, -2, -2, -2, -1, -1, -1, -1, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
         -2, -2, -2, -2, -2, -2, -2, -2, -1, -1, -1, -1, -1, -1, -1, -1]
-}
+};
 
 const ENERGY_TRAINING_SET = {
     data: [
@@ -99,7 +99,7 @@ const ENERGY_TRAINING_SET = {
     ],
     predictions: [-2, -2, -2, -2, -1, -1, -1, -1, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
         -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0]
-}
+};
 
 const TIME_CLASSIFIER = new MlKnn();
 TIME_CLASSIFIER.train(TIME_TRAINING_SET.data, TIME_TRAINING_SET.predictions);
@@ -179,12 +179,12 @@ function offloadMethod(observer: Rx.Observer<any>, msgBody: string, id: string) 
             const response = JSON.parse(messageEvent.data);
             observer.next(JSON.parse(response.BLPOP[1]));
             observer.complete();
-        }
+        };
         responseSocket.onerror = requestSocket.onerror;
     };
     requestSocket.onerror = function(e) {
         observer.error(e);
         observer.complete();
         console.log("Error " + JSON.stringify(e));
-    }
+    };
 }
