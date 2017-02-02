@@ -3,7 +3,7 @@
 import * as Rx from "rxjs";
 import * as MlKnn from "ml-knn";
 
-const DOCKER_MACHINE_WEBDIS_ENDPOINT = "ws://192.168.99.100:7379/.json";
+const WEBDIS_ENDPOINT = "ws://localhost:7379/.json";
 
 // attributes: [local/offload, methodSize, argumentsCount, argumentsSize]
 // labels: -2 = very low, -1 = low, 0 = medium, 1 = high, 2 = very high
@@ -162,7 +162,7 @@ export default function offloadable(target: Object, propertyKey: string, descrip
 }
 
 function offloadMethod(observer: Rx.Observer<any>, msgBody: string, id: string) {
-    const requestSocket = new WebSocket(DOCKER_MACHINE_WEBDIS_ENDPOINT);
+    const requestSocket = new WebSocket(WEBDIS_ENDPOINT);
     requestSocket.onopen = function() {
         requestSocket.send(JSON.stringify(["RPUSH", "requests", msgBody]));
     };
@@ -170,7 +170,7 @@ function offloadMethod(observer: Rx.Observer<any>, msgBody: string, id: string) 
         const obj = JSON.parse(messageEvent.data);
         console.log("Request sent " + messageEvent.data);
 
-        const responseSocket = new WebSocket(DOCKER_MACHINE_WEBDIS_ENDPOINT);
+        const responseSocket = new WebSocket(WEBDIS_ENDPOINT);
         responseSocket.onopen = function() {
             responseSocket.send(JSON.stringify(["BLPOP", id, 30]));
         };
