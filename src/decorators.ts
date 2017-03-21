@@ -120,7 +120,7 @@ export default function offloadable(target: Object, propertyKey: string, descrip
         let strMethod = originalMethod.toString();
         let jsonArgs = JSON.stringify(args);
         let res;
-        console.log("code: ", strMethod);
+        console.log("code: ", strMethod.substring(0, 100));
         console.log("args: ", jsonArgs.substring(0, 100));
 
         let start = performance.now();
