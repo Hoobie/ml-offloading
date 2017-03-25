@@ -1,24 +1,20 @@
 /// <reference path="./declarations.d.ts" />
 
 import { Configuration } from "./configuration";
+import { Classifiers } from "./classifiers/classifiers";
 import * as Rx from "rxjs";
-import * as MlKnn from "ml-knn";
 
 const LOCAL_WEBDIS_ENDPOINT = "ws://localhost:7379/.json";
 const REMOTE_WEBDIS_ENDPOINT = "ws://localhost:7379/.json";
 
-// attributes: [local/offload, methodSize, argumentsCount, argumentsSize]
-// labels: -2 = very low, -1 = low, 0 = medium, 1 = high, 2 = very high
-const TIME_KNN_CLASSIFIER = new MlKnn();
-const ENERGY_KNN_CLASSIFIER = new MlKnn();
-
 const W_T = 0.7;
 const W_E = 0.3;
+
 function cost(mT: number, mE: number): number {
     return (W_T * mT) + (W_E * mE);
 }
 
-export default function offloadable(target: Object, propertyKey: string, descriptor: PropertyDescriptor) {
+export function offloadable(target: Object, propertyKey: string, descriptor: PropertyDescriptor) {
     let originalMethod = descriptor.value;
 
     descriptor.value = function(...args: any[]) {
@@ -30,36 +26,37 @@ export default function offloadable(target: Object, propertyKey: string, descrip
 
         let start = performance.now();
 
-        var local_cost, offload_pc_cost, offload_cloud_cost;
+        let local_cost, offload_pc_cost, offload_cloud_cost;
+        let features = [0, strMethod.length, args.length, jsonArgs.length];
+        console.log("features: ", JSON.stringify(features));
 
-        if (Configuration.execution === Configuration.Execution.PREDICTION) {
-            let local_features = [0, strMethod.length, args.length, jsonArgs.length];
-            console.log("local features: ", JSON.stringify(local_features));
-            let offload_pc_features = [1, strMethod.length, args.length, jsonArgs.length];
-            console.log("PC offload features: ", JSON.stringify(offload_pc_features));
-            let offload_cloud_features = [2, strMethod.length, args.length, jsonArgs.length];
-            console.log("Cloud offload features: ", JSON.stringify(offload_cloud_features));
-
-            local_cost = cost(TIME_KNN_CLASSIFIER.predict([local_features])[0], ENERGY_KNN_CLASSIFIER.predict([local_features])[0]);
-            offload_pc_cost = cost(TIME_KNN_CLASSIFIER.predict([offload_pc_features])[0], ENERGY_KNN_CLASSIFIER.predict([offload_pc_features])[0]);
-            offload_cloud_cost = cost(TIME_KNN_CLASSIFIER.predict([offload_cloud_features])[0], ENERGY_KNN_CLASSIFIER.predict([offload_cloud_features])[0]);
+        if (Configuration.execution === Configuration.ExecutionType.PREDICTION) {
+            local_cost = cost(Classifiers.getTimeClassifier().predict(features),
+                Classifiers.getEnergyClassifier().predict(features));
+            features[0] = Configuration.ExecutionType.PC_OFFLOADING;
+            offload_pc_cost = cost(Classifiers.getTimeClassifier().predict(features),
+                Classifiers.getEnergyClassifier().predict(features));
+            features[0] = Configuration.ExecutionType.CLOUD_OFFLOADING;
+            offload_cloud_cost = cost(Classifiers.getTimeClassifier().predict(features),
+                Classifiers.getEnergyClassifier().predict(features));
 
             console.log("local cost: ", local_cost);
             console.log("PC offload cost: ", offload_pc_cost);
             console.log("Cloud offload cost: ", offload_cloud_cost);
         }
 
-        if (Configuration.execution === Configuration.Execution.LOCAL
+        let execution = Configuration.ExecutionType.LOCAL;
+        if (Configuration.execution === Configuration.ExecutionType.LOCAL
             || local_cost <= offload_pc_cost && local_cost <= offload_cloud_cost) {
 
             console.log("execution: LOCAL");
             observable = Rx.Observable.of(originalMethod.apply(this, args));
         } else {
-            const execution = Configuration.execution === Configuration.Execution.PREDICTION ?
-                (offload_pc_cost <= offload_cloud_cost ? Configuration.Execution.PC_OFFLOADING : Configuration.Execution.CLOUD_OFFLOADING)
+            execution = Configuration.execution === Configuration.ExecutionType.PREDICTION ?
+                (offload_pc_cost <= offload_cloud_cost ? Configuration.ExecutionType.PC_OFFLOADING : Configuration.ExecutionType.CLOUD_OFFLOADING)
                 : Configuration.execution;
 
-            console.log("execution: " + execution.toString());
+            console.log("execution: " + Configuration.ExecutionType[execution]);
             const id = Date.now();
             let body = {
                 id: id,
@@ -67,21 +64,24 @@ export default function offloadable(target: Object, propertyKey: string, descrip
                 args: args
             };
             observable = Rx.Observable.create(function(observer) {
-                let url = execution === Configuration.Execution.PC_OFFLOADING ? LOCAL_WEBDIS_ENDPOINT : REMOTE_WEBDIS_ENDPOINT;
+                let url = execution === Configuration.ExecutionType.PC_OFFLOADING ? LOCAL_WEBDIS_ENDPOINT : REMOTE_WEBDIS_ENDPOINT;
                 offloadMethod(observer, url, JSON.stringify(body), id.toString());
             });
         }
+
+        console.log("features: " + features);
 
         let subject = new Rx.Subject();
         subject.subscribe(
             function(x) { },
             function(e) { },
             function() {
-                let end = performance.now();
-                console.log("time [ms]: ", end - start);
+                let time  = performance.now() - start;
+                console.log("time [ms]: ", time);
 
-                // TODO: train
-                // CLASSIFIER.train(TRAINING_SET.data, TRAINING_SET.predictions);
+                features[0] = execution;
+                Classifiers.trainTimeClassifiers(features, time < 5000 ? -1 : -0.5);
+                Classifiers.trainEnergyClassifiers(features, -2);
             }
         );
         observable.subscribe(subject);

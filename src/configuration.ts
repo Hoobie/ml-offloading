@@ -1,17 +1,7 @@
 export namespace Configuration {
-    export enum Execution {
-        LOCAL,
-        PC_OFFLOADING,
-        CLOUD_OFFLOADING,
-        PREDICTION
-    }
+    export enum ExecutionType { LOCAL, PC_OFFLOADING, CLOUD_OFFLOADING, PREDICTION };
+    export enum ClassifierType { KNN, NEURAL_NETWORK };
 
-    export enum Classifier {
-        KNN,
-        NAIVE_BAYES,
-        RANDOM_FOREST
-    }
-
-    export var execution: Execution = Execution.PC_OFFLOADING;
-    export var classifier: Classifier = Classifier.KNN;
+    export var execution: ExecutionType = ExecutionType.LOCAL;
+    export var classifier: ClassifierType = ClassifierType.KNN;
 }
