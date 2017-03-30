@@ -26,14 +26,4 @@ export namespace Classifiers {
                 return Classifiers.NN_ENERGY;
         }
     }
-
-    export function trainTimeClassifiers(features, prediction) {
-        Classifiers.KNN_TIME.train(features, prediction);
-        Classifiers.NN_TIME.train(features, prediction);
-    }
-
-    export function trainEnergyClassifiers(features, prediction) {
-        Classifiers.KNN_ENERGY.train(features, prediction);
-        Classifiers.NN_ENERGY.train(features, prediction);
-    }
 }

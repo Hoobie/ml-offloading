@@ -4,11 +4,14 @@ import { Configuration } from "./configuration";
 import { Classifiers } from "./classifiers/classifiers";
 import * as Rx from "rxjs";
 
-const LOCAL_WEBDIS_ENDPOINT = "ws://localhost:7379/.json";
-const REMOTE_WEBDIS_ENDPOINT = "ws://localhost:7379/.json";
+const LOCAL_WEBDIS_ENDPOINT = "http://localhost:7379";
+const REMOTE_WEBDIS_ENDPOINT = "http://localhost:7379";
 
 const W_T = 0.7;
 const W_E = 0.3;
+
+let isCordovaApp = !!(window as MyWindow).cordova;
+let wifiEnabled = true;
 
 function cost(mT: number, mE: number): number {
     return (W_T * mT) + (W_E * mE);
@@ -18,17 +21,34 @@ export function offloadable(target: Object, propertyKey: string, descriptor: Pro
     let originalMethod = descriptor.value;
 
     descriptor.value = function(...args: any[]) {
+        if (isCordovaApp) {
+            (window as MyWindow).startPowerMeasurements(function(msg) {
+                if (msg) {
+                    console.log(msg);
+                }
+            });
+        }
+
+        if (typeof WifiWizard !== "undefined") {
+            WifiWizard.isWifiEnabled(function(enabled: boolean) {
+                wifiEnabled = enabled;
+                console.log("WiFi enabled: " + wifiEnabled);
+            }, function(err) { });
+        }
+
         let strMethod = originalMethod.toString();
         let jsonArgs = JSON.stringify(args);
         let observable: Rx.Observable<any>;
+        let start = performance.now();
+        let local_cost, offload_pc_cost, offload_cloud_cost;
+        let date = new Date();
+        let online = navigator.onLine;
+        let features = [0, strMethod.length, args.length, jsonArgs.length,
+            date.getHours(), wifiEnabled ? 1 : 0];
+
         console.log("code: ", strMethod.substring(0, 100));
         console.log("args: ", jsonArgs.substring(0, 100));
-
-        let start = performance.now();
-
-        let local_cost, offload_pc_cost, offload_cloud_cost;
-        let features = [0, strMethod.length, args.length, jsonArgs.length];
-        console.log("features: ", JSON.stringify(features));
+        console.log("online: ", online);
 
         if (Configuration.execution === Configuration.ExecutionType.PREDICTION) {
             local_cost = cost(Classifiers.getTimeClassifier().predict(features),
@@ -69,19 +89,32 @@ export function offloadable(target: Object, propertyKey: string, descriptor: Pro
             });
         }
 
-        console.log("features: " + features);
+        console.log("features: " + JSON.stringify(features));
 
-        let subject = new Rx.Subject();
+        let subject = new Rx.ReplaySubject(1);
         subject.subscribe(
             function(x) { },
             function(e) { },
             function() {
-                let time  = performance.now() - start;
+                let time = performance.now() - start;
                 console.log("time [ms]: ", time);
 
                 features[0] = execution;
-                Classifiers.trainTimeClassifiers(features, time < 5000 ? -1 : -0.5);
-                Classifiers.trainEnergyClassifiers(features, -2);
+                let energyDrain = -2;
+                if (isCordovaApp) {
+                    (window as MyWindow).stopPowerMeasurements(function(battery) {
+                        console.log(JSON.stringify(battery));
+                        energyDrain = battery.total < 10 ? -2 :
+                            (battery.total < 25 ? -1 :
+                                (battery.total < 50 ? 0 :
+                                    (battery.total < 100 ? 1 : 2)));
+                    });
+                }
+
+                let executionTime = time < 300 ? -2 : (time < 1000 ? -1 :
+                    (time < 2000 ? 0 : (time < 5000 ? 1 : 2)));
+                Classifiers.getTimeClassifier().train(features, executionTime);
+                Classifiers.getEnergyClassifier().train(features, energyDrain);
             }
         );
         observable.subscribe(subject);
@@ -93,29 +126,18 @@ export function offloadable(target: Object, propertyKey: string, descriptor: Pro
 }
 
 function offloadMethod(observer: Rx.Observer<any>, webdisUrl: string, msgBody: string, id: string) {
-    const requestSocket = new WebSocket(LOCAL_WEBDIS_ENDPOINT);
-    requestSocket.onopen = function() {
-        requestSocket.send(JSON.stringify(["RPUSH", "requests", msgBody]));
-    };
-    requestSocket.onmessage = function(messageEvent) {
-        const obj = JSON.parse(messageEvent.data);
-        console.log("Request sent " + messageEvent.data);
+    http("POST", webdisUrl + "/", "RPUSH/requests/" + msgBody);
+    let result = JSON.parse(http("GET", webdisUrl + "/BLPOP/" + id + "/300", null)).BLPOP[1];
+    console.debug("Parsed HTTP result: " + result);
+    observer.next(result);
+    observer.complete();
+}
 
-        const responseSocket = new WebSocket(webdisUrl);
-        responseSocket.onopen = function() {
-            responseSocket.send(JSON.stringify(["BLPOP", id, 30]));
-        };
-        responseSocket.onmessage = function(messageEvent) {
-            console.log("Response received " + messageEvent.data);
-            const response = JSON.parse(messageEvent.data);
-            observer.next(JSON.parse(response.BLPOP[1]));
-            observer.complete();
-        };
-        responseSocket.onerror = requestSocket.onerror;
-    };
-    requestSocket.onerror = function(e) {
-        observer.error(e);
-        observer.complete();
-        console.log("Error " + JSON.stringify(e));
-    };
+function http(method: string, url: string, params: string) {
+    let xmlHttp = new XMLHttpRequest();
+    xmlHttp.open(method, url, false);
+    xmlHttp.setRequestHeader("Content-type", "application/json");
+    xmlHttp.send(params);
+    console.debug("HTTP result: ", xmlHttp.responseText);
+    return xmlHttp.responseText;
 }
