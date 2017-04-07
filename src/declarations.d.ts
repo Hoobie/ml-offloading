@@ -1,4 +1,5 @@
 declare module 'knear';
+declare module 'ml-cart';
 
 interface MyWindow extends Window {
     cordova;

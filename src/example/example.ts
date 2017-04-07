@@ -16,6 +16,8 @@ class Example {
 
 let example = new Example();
 
+Configuration.classifier = Configuration.ClassifierType.DECISION_TREE;
+
 let t1: Rx.Subject<any> = example.test1();
 t1.subscribe(
     function(x) { console.log('onNext: ', x); },
