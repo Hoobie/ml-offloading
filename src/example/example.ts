@@ -3,20 +3,18 @@ import { Configuration } from '../configuration';
 import * as Rx from 'rxjs';
 
 class Example {
-    @offloadable
+    @offloadable(false)
     test1(): any {
         return "test1";
     }
 
-    @offloadable
+    @offloadable(false)
     test2(arg: string): any {
         return "test2";
     }
 }
 
 let example = new Example();
-
-Configuration.classifier = Configuration.ClassifierType.DECISION_TREE;
 
 let t1: Rx.Subject<any> = example.test1();
 t1.subscribe(
