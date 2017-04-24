@@ -4,9 +4,6 @@ import { Configuration } from "./configuration";
 import { Classifiers } from "./classifiers/classifiers";
 import * as Rx from "rxjs";
 
-const LOCAL_WEBDIS_ENDPOINT = "http://192.168.1.108:7379";
-const REMOTE_WEBDIS_ENDPOINT = "http://192.168.1.108:7379";
-
 const W_T = 0.7;
 const W_E = 0.3;
 
@@ -51,11 +48,11 @@ export function offloadable(withCallback: boolean) {
             let date = new Date();
             let online = navigator.onLine;
             let predict = Configuration.execution === Configuration.ExecutionType.PREDICTION;
-            let features = [0, strMethod.length, args.length, jsonArgs.length,
-                date.getHours(), wifiEnabled ? 1 : 0];
+            let features = [0, strMethod.length / 50000, args.length / 20, jsonArgs.length * 2 / 1024 / 1024 / 1024,
+                date.getHours() / 24, wifiEnabled ? 1 : 0];
 
-            console.log("code: ", strMethod.substring(0, 100));
-            console.log("args: ", jsonArgs.substring(0, 100));
+            console.log("code: ", strMethod.substring(0, 150), "...");
+            console.log("args: ", args);
             console.log("online: ", online);
 
             if (Configuration.execution === Configuration.ExecutionType.PREDICTION) {
@@ -83,7 +80,8 @@ export function offloadable(withCallback: boolean) {
                         originalMethod.apply(this, args);
                     });
                 } else {
-                    observable = Rx.Observable.of(originalMethod.apply(this, args));
+                    let result = originalMethod.apply(this, args);
+                    observable = Rx.Observable.of(result);
                 }
             } else {
                 execution = Configuration.execution === Configuration.ExecutionType.PREDICTION ?
@@ -99,7 +97,9 @@ export function offloadable(withCallback: boolean) {
                     withCallback: withCallback
                 };
                 observable = Rx.Observable.create(function(observer) {
-                    let url = execution === Configuration.ExecutionType.PC_OFFLOADING ? LOCAL_WEBDIS_ENDPOINT : REMOTE_WEBDIS_ENDPOINT;
+                    let localWebdisEndpoint = "http://" + Configuration.localEndpoint + ":7379";
+                    let remoteWebdisEndpoint = "http://" + Configuration.remoteEndpoint + ":7379";
+                    let url = execution === Configuration.ExecutionType.PC_OFFLOADING ? localWebdisEndpoint : remoteWebdisEndpoint;
                     offloadMethod(observer, url, JSON.stringify(body), id.toString());
                 });
             }
@@ -108,13 +108,15 @@ export function offloadable(withCallback: boolean) {
 
             let subject = new Rx.ReplaySubject(1);
             subject.subscribe(
-                function(x) { },
+                function(x) {
+                    console.log("Result: ", x);
+                },
                 function(e) { },
                 function() {
                     let time = performance.now() - start;
                     console.log("time [ms]: ", time);
-                    let executionTime = time < 300 ? -2 : (time < 1000 ? -1 :
-                        (time < 2000 ? 0 : (time < 5000 ? 1 : 2)));
+                    let executionTime = time < 500 ? -2 : (time < 1000 ? -1 :
+                        (time < 5000 ? 0 : (time < 25000 ? 1 : 2)));
 
                     features[0] = execution;
                     let energyDrain = -2;
@@ -136,6 +138,8 @@ export function offloadable(withCallback: boolean) {
                         });
                     } else {
                         // pc browser
+                        console.log("learn: ", features, executionTime);
+
                         Classifiers.getTimeClassifier().train(features, executionTime);
                         Classifiers.getEnergyClassifier().train(features, energyDrain);
 
@@ -154,10 +158,11 @@ export function offloadable(withCallback: boolean) {
 }
 
 function offloadMethod(observer: Rx.Observer<any>, webdisUrl: string, msgBody: string, id: string) {
-    http("POST", webdisUrl + "/", "RPUSH/requests/" + msgBody);
-    let result = JSON.parse(http("GET", webdisUrl + "/BLPOP/" + id + "/300", null)).BLPOP[1];
-    console.debug("Parsed HTTP result: " + result);
-    observer.next(result);
+    msgBody = msgBody.replace(/\\n/g, "").replace(/\//g, "%2f").replace(/\./g, "%2e");
+    http("POST", webdisUrl + "/", "RPUSH/requests/" + encodeURIComponent(msgBody));
+    let result = JSON.parse(http("GET", webdisUrl + "/BLPOP/" + id + "/300", null));
+    console.debug("Parsed HTTP result: ", result);
+    observer.next(result.BLPOP[1]);
     observer.complete();
 }
 
@@ -166,6 +171,5 @@ function http(method: string, url: string, params: string) {
     xmlHttp.open(method, url, false);
     xmlHttp.setRequestHeader("Content-type", "application/json");
     xmlHttp.send(params);
-    console.debug("HTTP result: ", xmlHttp.responseText);
     return xmlHttp.responseText;
 }

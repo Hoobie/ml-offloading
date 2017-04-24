@@ -1,14 +1,16 @@
 import { Classifier } from "./classifier";
+import * as fnn from "ml-fnn";
 
 export class NNClassifier implements Classifier {
 
-    baseClassifier = (window as MyWindow).Mind();
+    baseClassifier = new fnn();
 
     train(features: Array<number>, prediction: number) {
-        this.baseClassifier.learn([{ input: features, output: [prediction] }]);
+        this.baseClassifier.train([features], [prediction]);
     }
 
     predict(features: Array<number>): number {
-        return this.baseClassifier.predict(features);
+        let prediction = this.baseClassifier.predict([features])[0];
+        return prediction;
     }
 }

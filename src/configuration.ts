@@ -4,4 +4,6 @@ export namespace Configuration {
 
     export var execution: ExecutionType = ExecutionType.LOCAL;
     export var classifier: ClassifierType = ClassifierType.KNN;
+    export var localEndpoint: string;
+    export var remoteEndpoint: string;
 }

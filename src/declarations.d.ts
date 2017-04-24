@@ -1,11 +1,11 @@
 declare module 'knear';
 declare module 'ml-cart';
+declare module 'ml-fnn'
 
 interface MyWindow extends Window {
     cordova;
     ActiveXObject;
 
-    Mind();
     startPowerMeasurements(fun: (data) => any): any;
     stopPowerMeasurements(fun: (data) => any): any;
 }
