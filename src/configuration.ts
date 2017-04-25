@@ -6,4 +6,7 @@ export namespace Configuration {
     export var classifier: ClassifierType = ClassifierType.KNN;
     export var localEndpoint: string;
     export var remoteEndpoint: string;
+    export var shouldTrain: boolean = true;
+    export var shouldTrainAllClassifiers: boolean = false;
+    export var roundId = -1;
 }

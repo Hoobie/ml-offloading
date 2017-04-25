@@ -33,4 +33,16 @@ export namespace Classifiers {
                 return Classifiers.DT_ENERGY;
         }
     }
+
+    export function trainAllTime(features, executionTime) {
+      KNN_TIME.train(features, executionTime);
+      NN_TIME.train(features, executionTime);
+      DT_TIME.train(features, executionTime);
+    }
+
+    export function trainAllEnergy(features, energyDrain) {
+      KNN_ENERGY.train(features, energyDrain);
+      NN_ENERGY.train(features, energyDrain);
+      DT_ENERGY.train(features, energyDrain);
+    }
 }
