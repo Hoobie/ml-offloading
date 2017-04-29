@@ -167,17 +167,32 @@ export function offloadable(withCallback: boolean) {
 
 function offloadMethod(observer: Rx.Observer<any>, webdisUrl: string, msgBody: string, id: string) {
   msgBody = msgBody.replace(/\\n/g, "").replace(/\./g, "%2e"); // .replace(/\//g, "%2f");
-  http("POST", webdisUrl + "/", "RPUSH/requests/" + encodeURIComponent(msgBody));
-  let result = JSON.parse(http("GET", webdisUrl + "/BLPOP/" + id + "/600", null));
-  console.debug("Parsed HTTP result: ", result);
-  observer.next(result.BLPOP[1]);
-  observer.complete();
+  let onLoadCallback = function(e) {
+    if (this.readyState === 4) {
+      if (this.status === 200) {
+        let result = JSON.parse(this.responseText);
+        if (!result.BLPOP) {
+          http(observer, "GET", webdisUrl + "/BLPOP/" + id + "/600", null, onLoadCallback);
+        } else {
+          console.debug("Parsed HTTP result: ", result);
+          observer.next(result.BLPOP[1]);
+          observer.complete();
+        }
+      } else {
+        observer.error(this.statusText);
+      }
+    }
+  };
+  http(observer, "POST", webdisUrl + "/", "RPUSH/requests/" + encodeURIComponent(msgBody), onLoadCallback);
 }
 
-function http(method: string, url: string, params: string) {
-  let xmlHttp = new XMLHttpRequest();
-  xmlHttp.open(method, url, false);
-  xmlHttp.setRequestHeader("Content-type", "application/json");
-  xmlHttp.send(params);
-  return xmlHttp.responseText;
+function http(observer: Rx.Observer<any>, method: string, url: string, params: string, onLoadCallback: (e) => void) {
+  let xhr = new XMLHttpRequest();
+  xhr.open(method, url, false);
+  xhr.setRequestHeader("Content-type", "application/json");
+  xhr.onload = onLoadCallback;
+  xhr.onerror = function(e) {
+    observer.error(xhr.statusText);
+  };
+  xhr.send(params);
 }
