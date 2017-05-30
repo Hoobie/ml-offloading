@@ -4,17 +4,13 @@ import { Configuration } from "./configuration";
 import { Classifiers } from "./classifiers/classifiers";
 import * as Rx from "rxjs";
 
-const W_T = 0.7;
-const W_E = 0.3;
+const W_T = 0.3;
+const W_E = 0.7;
 
 let isCordovaApp = !!(window as MyWindow).cordova;
 let wifiEnabled = true;
 
 let reasearchData = [];
-
-function cost(mT: number, mE: number): number {
-  return (W_T * mT) + (W_E * mE);
-}
 
 export function offloadable(withCallback: boolean) {
   return function(target: Object, propertyKey: string, descriptor: PropertyDescriptor) {
@@ -48,8 +44,9 @@ export function offloadable(withCallback: boolean) {
       let date = new Date();
       let online = navigator.onLine;
       let predict = Configuration.execution === Configuration.ExecutionType.PREDICTION;
-      let features = [0, strMethod.length / 50000, args.length / 20, jsonArgs.length * 2 / 1024 / 1024 / 1024,
-        date.getHours() / 24, wifiEnabled ? 1 : 0];
+      let features = [0, hashCodeNormalized(strMethod),
+        jsonArgs.length * 2 / 1024 / 100, date.getHours() / 24,
+        wifiEnabled ? 1 : 0];
 
       console.log("code: ", strMethod.substring(0, 150), "...");
       console.log("args: ", args);
@@ -58,10 +55,10 @@ export function offloadable(withCallback: boolean) {
       if (Configuration.execution === Configuration.ExecutionType.PREDICTION) {
         local_cost = cost(Classifiers.getTimeClassifier().predict(features),
           Classifiers.getEnergyClassifier().predict(features));
-        features[0] = Configuration.ExecutionType.PC_OFFLOADING;
+        features[0] = (Configuration.ExecutionType.PC_OFFLOADING - 1) * Configuration.EXECUTION_MULTIPLIER;
         offload_pc_cost = cost(Classifiers.getTimeClassifier().predict(features),
           Classifiers.getEnergyClassifier().predict(features));
-        features[0] = Configuration.ExecutionType.CLOUD_OFFLOADING;
+        features[0] = (Configuration.ExecutionType.CLOUD_OFFLOADING - 1) * Configuration.EXECUTION_MULTIPLIER;
         offload_cloud_cost = cost(Classifiers.getTimeClassifier().predict(features),
           Classifiers.getEnergyClassifier().predict(features));
 
@@ -78,10 +75,13 @@ export function offloadable(withCallback: boolean) {
         if (withCallback) {
           observable = Rx.Observable.create(function(observer) {
             originalMethod.apply(this, args);
-          });
+          }).observeOn(Rx.Scheduler.asap).subscribeOn(Rx.Scheduler.asap);
         } else {
-          let result = originalMethod.apply(this, args);
-          observable = Rx.Observable.of(result);
+          observable = Rx.Observable.create(function(observer) {
+            let result = originalMethod.apply(this, args);
+            observer.next(result);
+            observer.complete();
+          }).observeOn(Rx.Scheduler.asap).subscribeOn(Rx.Scheduler.asap);
         }
       } else {
         execution = Configuration.execution === Configuration.ExecutionType.PREDICTION ?
@@ -101,35 +101,34 @@ export function offloadable(withCallback: boolean) {
           let remoteWebdisEndpoint = "http://" + Configuration.remoteEndpoint + ":7379";
           let url = execution === Configuration.ExecutionType.PC_OFFLOADING ? localWebdisEndpoint : remoteWebdisEndpoint;
           offloadMethod(observer, url, JSON.stringify(body), id.toString());
-        });
+        }).observeOn(Rx.Scheduler.asap).subscribeOn(Rx.Scheduler.asap);
       }
-
-      console.log("features: " + JSON.stringify(features));
 
       let subject = new Rx.ReplaySubject(1);
       subject.subscribe(
-        function(x) {
-          console.log("Result: ", x);
-        },
+        function(x) { },
         function(e) { },
         function() {
           let time = performance.now() - start;
           console.log("time [ms]: ", time);
-          let executionTime = time < 1000 ? -2 : (time < 5000 ? -1 :
-            (time < 25000 ? 0 : (time < 50000 ? 1 : 2)));
+          let executionTime = time < 500 ? -2 : (time < 1000 ? -1 :
+            (time < 2000 ? 0 : (time < 5000 ? 1 : 2)));
 
-          features[0] = execution;
+          features[0] = (execution - 1) * Configuration.EXECUTION_MULTIPLIER;
+          console.log("features: ", JSON.stringify(features));
+
           let energyDrain = -2;
           let batteryTotal = 0;
           if (isCordovaApp) {
             (window as MyWindow).stopPowerMeasurements(function(battery) {
               console.log(JSON.stringify(battery));
               batteryTotal = battery.total;
-              energyDrain = battery.total < 10 ? -2 :
-                (battery.total < 25 ? -1 :
-                  (battery.total < 50 ? 0 :
-                    (battery.total < 100 ? 1 : 2)));
+              energyDrain = battery.total < 0.025 ? -2 :
+                (battery.total < 0.05 ? -1 :
+                  (battery.total < 0.1 ? 0 :
+                    (battery.total < 0.25 ? 1 : 2)));
 
+              console.log("learn energy: ", energyDrain);
               if (Configuration.shouldTrain && Configuration.shouldTrainAllClassifiers) {
                 Classifiers.trainAllEnergy(features, energyDrain);
               } else if (Configuration.shouldTrain) {
@@ -142,11 +141,11 @@ export function offloadable(withCallback: boolean) {
                 Configuration.ExecutionType[execution],
                 wifiEnabled ? 1 : 0,
                 time, batteryTotal]);
-              console.log(JSON.stringify(reasearchData));
+              console.log("data: ", JSON.stringify(reasearchData));
             });
           }
 
-          console.log("learn: ", features, executionTime, energyDrain);
+          console.log("learn time: ", executionTime);
           if (Configuration.shouldTrain && Configuration.shouldTrainAllClassifiers) {
             Classifiers.trainAllTime(features, executionTime);
             if (!isCordovaApp) Classifiers.trainAllEnergy(features, executionTime);
@@ -156,7 +155,12 @@ export function offloadable(withCallback: boolean) {
           }
         }
       );
-      observable.subscribe(subject);
+      observable
+        .catch(e => {
+          console.error(e);
+          return Rx.Observable.of(e);
+        })
+        .subscribe(subject);
 
       return subject;
     };
@@ -164,6 +168,22 @@ export function offloadable(withCallback: boolean) {
     return descriptor;
   };
 }
+
+function cost(mT: number, mE: number): number {
+  return (W_T * mT) + (W_E * mE);
+}
+
+function hashCodeNormalized(s: string): number {
+  let hash = 0, chr;
+  if (s.length === 0) return hash;
+  for (let i = 0; i < s.length; i++) {
+    chr = s.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash |= 0;
+  }
+  if (hash > 0) return parseFloat("0." + hash);
+  else return parseFloat("-0." + Math.abs(hash));
+};
 
 function offloadMethod(observer: Rx.Observer<any>, webdisUrl: string, msgBody: string, id: string) {
   msgBody = msgBody.replace(/\\n/g, "").replace(/\./g, "%2e"); // .replace(/\//g, "%2f");
@@ -188,11 +208,11 @@ function offloadMethod(observer: Rx.Observer<any>, webdisUrl: string, msgBody: s
 
 function http(observer: Rx.Observer<any>, method: string, url: string, params: string, onLoadCallback: (e) => void) {
   let xhr = new XMLHttpRequest();
-  xhr.open(method, url, false);
+  xhr.onerror = function(e) {
+    observer.error(e);
+  };
+  xhr.open(method, url, true);
   xhr.setRequestHeader("Content-type", "application/json");
   xhr.onload = onLoadCallback;
-  xhr.onerror = function(e) {
-    observer.error(xhr.statusText);
-  };
   xhr.send(params);
 }

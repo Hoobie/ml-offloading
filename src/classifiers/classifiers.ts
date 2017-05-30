@@ -5,12 +5,12 @@ import { DTClassifier } from "./dt-classifier";
 import { Configuration } from "../configuration";
 
 export namespace Classifiers {
-    export const KNN_TIME = new KnnClassifier();
-    export const KNN_ENERGY = new KnnClassifier();
-    export const NN_TIME = new NNClassifier();
-    export const NN_ENERGY = new NNClassifier();
-    export const DT_TIME = new DTClassifier();
-    export const DT_ENERGY = new DTClassifier();
+    export var KNN_TIME = new KnnClassifier();
+    export var KNN_ENERGY = new KnnClassifier();
+    export var NN_TIME = new NNClassifier();
+    export var NN_ENERGY = new NNClassifier();
+    export var DT_TIME = new DTClassifier();
+    export var DT_ENERGY = new DTClassifier();
 
     export function getTimeClassifier(): Classifier {
         switch (Configuration.classifier) {
@@ -44,5 +44,14 @@ export namespace Classifiers {
       KNN_ENERGY.train(features, energyDrain);
       NN_ENERGY.train(features, energyDrain);
       DT_ENERGY.train(features, energyDrain);
+    }
+
+    export function reset(): void {
+      KNN_TIME = new KnnClassifier();
+      KNN_ENERGY = new KnnClassifier();
+      NN_TIME = new NNClassifier();
+      NN_ENERGY = new NNClassifier();
+      DT_TIME = new DTClassifier();
+      DT_ENERGY = new DTClassifier();
     }
 }
