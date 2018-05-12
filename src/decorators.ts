@@ -10,7 +10,7 @@ const W_E = 0.7;
 let isCordovaApp = !!(window as MyWindow).cordova;
 let wifiEnabled = true;
 
-let reasearchData = [];
+let researchData = [];
 
 export function offloadable(withCallback: boolean) {
   return function(target: Object, propertyKey: string, descriptor: PropertyDescriptor) {
@@ -33,7 +33,9 @@ export function offloadable(withCallback: boolean) {
         WifiWizard.isWifiEnabled(function(enabled: boolean) {
           wifiEnabled = enabled;
           console.log("WiFi enabled: " + wifiEnabled);
-        }, function(err) { });
+        }, function (err) {
+            // ignore
+        });
       }
 
       let strMethod = originalMethod.toString();
@@ -135,13 +137,13 @@ export function offloadable(withCallback: boolean) {
                 Classifiers.getEnergyClassifier().train(features, energyDrain);
               }
 
-              reasearchData.push([Configuration.roundId,
+              researchData.push([Configuration.roundId,
                 predict ? Configuration.ClassifierType[Configuration.classifier] : "NONE",
                 predict ? "PREDICTION" : "FIXED",
                 Configuration.ExecutionType[execution],
                 wifiEnabled ? 1 : 0,
                 time, batteryTotal]);
-              console.log("data: ", JSON.stringify(reasearchData));
+              console.log("data: ", JSON.stringify(researchData));
             });
           }
 
@@ -158,7 +160,7 @@ export function offloadable(withCallback: boolean) {
       observable
         .catch(e => {
           console.error(e);
-          return Rx.Observable.of(e);
+          return Rx.Observable.create(e);
         })
         .subscribe(subject);
 
@@ -183,7 +185,7 @@ function hashCodeNormalized(s: string): number {
   }
   if (hash > 0) return parseFloat("0." + hash);
   else return parseFloat("-0." + Math.abs(hash));
-};
+}
 
 function offloadMethod(observer: Rx.Observer<any>, webdisUrl: string, msgBody: string, id: string) {
   msgBody = msgBody.replace(/\\n/g, "").replace(/\./g, "%2e"); // .replace(/\//g, "%2f");
