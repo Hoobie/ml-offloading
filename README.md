@@ -1,5 +1,6 @@
 # Description
-A TypeScript library for MCC (Mobile Cloud Computing) code offloading with Machine Learning.
+A TypeScript library for MCC (Mobile Cloud Computing) code offloading with Machine Learning. See the [**component diagram**](components.pdf).
+
 
 # Requirements
 * [Node.js and npm](https://nodejs.org/en/download/)
